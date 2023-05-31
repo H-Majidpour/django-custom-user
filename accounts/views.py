@@ -1,7 +1,8 @@
+from django.http import HttpResponse
 from django.shortcuts import render, redirect
-from django.contrib.auth import login
+from django.contrib.auth import login, logout
 
-from .forms import UserLoginForm
+from .forms import UserLoginForm, CustomUserCreationForm
 
 
 def home(request):
@@ -14,7 +15,7 @@ def login_view(request):
             form = UserLoginForm(data=request.POST)
             if form.is_valid():
                 # log in the user
-                user = form.get_user()           
+                user = form.get_user()
                 login(request, user)
                 if next_url := request.POST.get("next"):
                     return redirect(next_url)
@@ -24,3 +25,26 @@ def login_view(request):
         return render(request, "login-page.html", {"form": form})
     else:
         return redirect("/home/")
+
+
+def register_view(request):
+    if not request.user.is_authenticated:
+        if request.method == "POST":
+            form = CustomUserCreationForm(request.POST)
+            if form.is_valid():
+                form.save()
+                return redirect("/")
+        else:
+            form = CustomUserCreationForm()
+        return render(request, "register-page.html", {"form": form})
+    else:
+        return redirect("/home/")
+
+
+def logout_view(request):
+    if request.user.is_authenticated:
+        logout(request)
+        return redirect("/")
+    else:
+        return redirect("/")
+
