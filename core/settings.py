@@ -128,6 +128,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # user model config
 AUTH_USER_MODEL = 'accounts.User'
+AUTHENTICATION_BACKENDS = ["accounts.backends.CustomBackend"]
 
 # login url
 LOGIN_URL = "/login/"

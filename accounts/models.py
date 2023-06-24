@@ -1,26 +1,55 @@
+import random
+import string
+
+from django.core.validators import MinLengthValidator
 from django.db import models
-from django.utils import timezone
-from django.dispatch import receiver
 from django.db.models.signals import post_save
-from django.utils.translation import gettext_lazy as _
+from django.dispatch import receiver
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
-from datetime import date
-from django.core.exceptions import ValidationError
+from django.utils.translation import gettext_lazy as _
+from django.utils import timezone
 
 from .managers import CustomUserManager
+from .validators import UsernameValidator, AgeValidator
 
 
-def validate_user_age(birthdate):
-    """Validates the age of a user."""
-    today = date.today()
-    age = today.year - birthdate.year - ((today.month, today.day) < (birthdate.month, birthdate.day))
-    if age < 15:
-        raise ValidationError("Sorry, you must be at least 15 years old to use this service :)")
-    return age
+def generate_unique_random_username(length=15):
+    """
+    Generate a unique random username of the given length.
+    """
+    characters = string.ascii_lowercase + string.digits + "_"
+    
+    # Generate a random username
+    random_username = "".join(random.choice(characters) for _ in range(length))
+    
+    # Check valid username
+    while True:
+        # Check if the username starts or ends with an underscore.
+        if random_username.startswith("_") or random_username.endswith("_"):
+            random_username = "".join(random.choice(characters) for _ in range(length))
+            
+        # Check if the username starts with a digit.
+        if random_username[0].isdigit():
+            random_username = "".join(random.choice(characters) for _ in range(length))
+
+        return random_username
 
 
 class User(AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(_("Email"), unique=True)
+    username = models.CharField(
+        _("Username"),
+        unique=True,
+        max_length=15,
+        help_text= _(
+            "You can use a-z, 0-9 and underscore. " 
+            "Minimum length in 5 character."
+        ),
+        validators=[
+            UsernameValidator(),
+            MinLengthValidator(5),
+        ]
+    )
     is_active = models.BooleanField(_("Is active"), default=False)
     is_staff = models.BooleanField(_("Staff status"), default=False)
     date_joined = models.DateField(_("Date joined"), default=timezone.now)
@@ -36,6 +65,20 @@ class User(AbstractBaseUser, PermissionsMixin):
     def __str__(self):
         return self.email
     
+    def save(self, *args, **kwargs):
+        if not self.username:
+            self.username = generate_unique_random_username()
+        super().save(*args, **kwargs)
+    
+    def get_username(self):
+        """Return the username for this User."""
+        return self.username
+    
+    def clean(self):
+        self.username = self.username.lower()
+        self.username = self.normalize_username(self.username)
+        
+        
     
 class Profile(models.Model):
     GENDER_CHOICES = [
@@ -45,14 +88,13 @@ class Profile(models.Model):
     ]
     
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="profile")
-    username = models.CharField(_("Username"), max_length=50, unique=True, null=True)
     first_name = models.CharField(_("First name"), max_length=30, null=True)
     last_name = models.CharField(_("Last name"), max_length=30, null=True)
     profile_image = models.ImageField(_("Profile image"), upload_to="profile_image/", null=True, blank=True)
     bio = models.TextField(_("Biography"), null=True)
     location = models.CharField(_("Location"), max_length=100, null=True)
     gender = models.CharField(_("Gender"), max_length=10, choices=GENDER_CHOICES, null=True)
-    birth_date = models.DateField(_("Date of birth"), validators=[validate_user_age], null=True)
+    birth_date = models.DateField(_("Date of birth"), validators=[AgeValidator()], null=True)
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

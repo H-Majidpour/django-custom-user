@@ -21,14 +21,14 @@ def login_view(request):
         form = UserLoginForm(data=request.POST)
         if form.is_valid():
             # log in the user
-            email=form.cleaned_data["username"]
+            username=form.cleaned_data["username"]
             password=form.cleaned_data["password"]
-            user = authenticate(email=email, password=password)
+            user = authenticate(username=username, password=password)
             if user is not None:
                 login(request, user)
                 next_url = request.POST.get("next")
                 return redirect(next_url or "/")
- 
+
     return render(request, "login-page.html", {"form": form})
 
 
@@ -40,7 +40,7 @@ def register_view(request):
         if form.is_valid():
             form.save()
             return redirect("/")
-        
+
     return render(request, "register-page.html", {"form": form})
 
 
