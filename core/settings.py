@@ -133,3 +133,12 @@ AUTHENTICATION_BACKENDS = ["accounts.backends.CustomBackend"]
 # login url
 LOGIN_URL = "/login/"
 # LOGIN_REDIRECT_URL = '/login/'
+
+# email config
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = "smtp.gmail.com"
+EMAIL_HOST_USER = "example@gmial.com"
+EMAIL_HOST_PASSWORD = "Your password"
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+PASSWORD_RESET_TIMEOUT = 3600    # second

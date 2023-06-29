@@ -42,7 +42,7 @@ class UserLoginForm(AuthenticationForm):
     password = forms.CharField(
         label=_("Password"),
         strip=False,
-        widget=forms.PasswordInput(attrs={"autocomplete": "current-password"})
+        widget=forms.PasswordInput(attrs={"autocomplete": "current-password", "placeholder": _("Password")})
     )
     
     def __init__(self, request=None, *args, **kwargs):
