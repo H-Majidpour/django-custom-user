@@ -10,7 +10,12 @@ from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.db.models import Q
 
-from .forms import UserLoginForm, CustomUserCreationForm
+from .forms import (
+    UserLoginForm,
+    CustomUserCreationForm,
+    CustomSetPasswordForm,
+    CustomPasswordResetForm,
+)
 from .decorators import user_not_authenticated
 from .token import account_activation_token
 
@@ -115,12 +120,74 @@ def register_view(request):
             user = form.save()
             send_confirmation_email(request, user, user.email)
             return redirect("/")
-        else:
-            handle_auth_error(request, form)
-
+        
     return render(request, "register-page.html", {"form": form})
 
 
+@login_required
+def password_change(request):
+    user = request.user
+    form = CustomSetPasswordForm(user)
+    if request.method == "POST":
+        form = CustomSetPasswordForm(user, data=request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "your password has been changed successfully.")
+        
+    return render(request, "password_reset_confirm.html", {"form": form})
+
+
+@user_not_authenticated
+def password_reset_request(request):
+    form = CustomPasswordResetForm()
+    if request.method == "POST":
+        form = CustomPasswordResetForm(request.POST)
+        if form.is_valid():
+            user_email = form.cleaned_data["email"]
+            print(user_email)
+            user = UserModel.objects.filter(Q(email=user_email)).first()
+            print(user.pk)
+            if user:
+                subject = "Password reset request"
+                message = render_to_string("template_reset_password.html", {
+                    "user": user,
+                    "domain": get_current_site(request).domain,
+                    "uid": urlsafe_base64_encode(force_bytes(user.pk)),
+                    "token": account_activation_token.make_token(user),
+                })
+                email = EmailMessage(subject, message, to=[user.email])
+                if email.send():
+                    messages.success(request, "Your password reset sent. <strong>Note</strong>: Check your spam folder.")
+                else:
+                    messages.error(request, "Problem sending reset password email, <b>SERVER PROBLEM</b>")
+            return redirect("/")
+    
+    return render(request, "password_reset.html", {"form": form})
+
+
+def password_reset_confirm(request, uidb64, token):
+    try:
+        uid = force_str(urlsafe_base64_decode(uidb64))
+        user = UserModel.objects.get(pk=uid)
+    except:
+        user = None
+        
+    if user and account_activation_token.check_token(user, token):
+        form = CustomSetPasswordForm(user)
+        if request.method == "POST":
+            form = CustomSetPasswordForm(user, request.POST)
+            if form.is_valid():
+                form.save()
+                messages.success(request, "Your password has been set. You may go ahead and <b>log in </b> now.")
+                return redirect("/")
+
+        return render(request, "password_reset_confirm.html", {"form": form})
+    else:
+        messages.error(request, "Link is expired")
+
+    return redirect("/")          
+                    
+                    
 def handle_auth_error(request, form):
     errors = form.errors.as_data()
     for field, error_list in errors.items():
@@ -131,10 +198,10 @@ def handle_auth_error(request, form):
                 url = "<a href='/resend_confirmation' class='alert-link'>Click</a>"
                 messages.warning(request, f"Your account is inactive. \
                     Please {url} to send the confirmation link.")
-            else:
-                message = error.message
-                params = error.params
-                messages.error(request, message if not params else message % params)
+            # else:
+            #     message = error.message
+            #     params = error.params
+            #     messages.error(request, message if not params else message % params)
 
 
 @login_required

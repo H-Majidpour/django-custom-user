@@ -3,6 +3,8 @@ from django.contrib.auth.forms import(
     UserChangeForm,
     UserCreationForm,
     AuthenticationForm,
+    SetPasswordForm,
+    PasswordResetForm
 ) 
 from django.utils.translation import gettext_lazy as _
 from django.contrib.auth import get_user_model
@@ -64,3 +66,11 @@ class UserLoginForm(AuthenticationForm):
                 raise self.get_invalid_login_error()     
         
         return self.cleaned_data
+
+
+class CustomSetPasswordForm(SetPasswordForm):
+    pass
+
+
+class CustomPasswordResetForm(PasswordResetForm):
+    pass
